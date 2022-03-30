@@ -12,13 +12,16 @@ def expr_to_str(expr):
         return "(" + " ".join(expr_to_str(p) for p in expr) + ")"
 
 
-def evaluate_expr(expr):
+def evaluate_expr(expr, output=False):
     if isinstance(expr, str):
         return expr
 
     stack = expr[::-1]
 
     while len(stack) > 1 or isinstance(stack[0], list):
+        if output:
+            print(expr_to_str(stack[::-1]))
+        
         fn = stack.pop()
 
         if isinstance(fn, list):
@@ -48,6 +51,9 @@ def evaluate_expr(expr):
             pass  # keep c_1 there
         else:
             raise ValueError(f"Unknown fn: {fn}")
+
+    if output:
+        print(stack[0])
 
     return stack[0]
 
