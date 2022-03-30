@@ -23,6 +23,12 @@ def evaluate_expr(expr):
 
         if isinstance(fn, list):
             stack.extend(reversed(fn))
+        elif fn == "Y":
+            if len(stack) < 2:
+                raise ValueError(f"Insufficient arguments for Y")
+            c_1 = stack.pop()
+            stack.append(['Y', c_1])
+            stack.append(c_1)
         elif fn == "S":
             if len(stack) < 3:
                 raise ValueError(f"Insufficient arguments for S")
@@ -34,7 +40,7 @@ def evaluate_expr(expr):
             stack.append(c_1)
         elif fn == "K":
             if len(stack) < 2:
-                raise ValueError(f"Insufficient arguments for S")
+                raise ValueError(f"Insufficient arguments for K")
             c_1 = stack.pop()
             stack.pop()  # c_2
             stack.append(c_1)
@@ -63,7 +69,7 @@ def _match(w, i, expected):
 
 
 def _parse_caf(w, i):
-    if i < len(w) and w[i] in "SKI":
+    if i < len(w) and w[i] in "SKIY":
         return _parse_constant(w, i)
     elif i < len(w) and w[i] == "(":
         i = _match(w, i, "(")
@@ -76,7 +82,7 @@ def _parse_caf(w, i):
         i = _match(w, i, ")")
         return value, i
     else:
-        _unexpected_error(w, i, "( or SKI")
+        _unexpected_error(w, i, "(SKIY")
 
 
 def _parse_constant(w, i):
@@ -84,7 +90,7 @@ def _parse_constant(w, i):
 
 
 def _parse_combinator(w, i):
-    if i < len(w) and w[i] in "SKI":
+    if i < len(w) and w[i] in "SKIY":
         return w[i], i + 1
     else:
-        _unexpected_error(w, i, "SKI")
+        _unexpected_error(w, i, "SKIY")
