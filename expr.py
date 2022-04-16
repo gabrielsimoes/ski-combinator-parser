@@ -6,56 +6,128 @@ def parse_expr(w):
 
 
 def expr_to_str(expr):
-    if isinstance(expr, str):
-        return expr
-    else:
+    if isinstance(expr, list):
         return "(" + " ".join(expr_to_str(p) for p in expr) + ")"
+    else:
+        return str(expr)
 
 
-def evaluate_expr(expr, output=False):
-    if isinstance(expr, str):
-        return expr
+def _evaluate_y(stack):
+    if len(stack) < 2:
+        stack.append("Y")
+        return False
+    c_1 = stack.pop()
+    stack.append(["Y", c_1])
+    stack.append(c_1)
+    return True
+
+
+def _evaluate_s(stack):
+    if len(stack) < 3:
+        stack.append("S")
+        return False
+    c_1 = stack.pop()
+    c_2 = stack.pop()
+    c_3 = stack.pop()
+    stack.append([c_2, c_3])
+    stack.append(c_3)
+    stack.append(c_1)
+    return True
+
+
+def _evaluate_k(stack):
+    if len(stack) < 2:
+        stack.append("K")
+        return False
+    c_1 = stack.pop()
+    stack.pop()  # c_2
+    stack.append(c_1)
+    return True
+
+
+def _evaluate_i(stack):
+    if len(stack) < 1:
+        stack.append("I")
+        return False
+    # keep c_1 there
+    return True
+
+
+EVALUATORS = {
+    "S": _evaluate_s,
+    "K": _evaluate_k,
+    "I": _evaluate_i,
+}
+
+OPTIONAL_EVALUATORS = {
+    "Y": _evaluate_y,
+}
+
+ZERO = ["K", "I"]
+
+SUCC = ["S", ["S", ["K", "S"], "K"]]
+
+ADD = ["S", ["K", "S"], ["S", ["K", ["S", ["K", "S"], "K"]]]]
+
+CONSTANTS = {
+    "zero": ZERO,
+    "succ": SUCC,
+    "add": ADD,
+    "+": ADD,
+}
+
+
+def _number_evaluator(n, stack):
+    if n == 0:
+        stack.append("zero")
+    else:
+        stack.append(["succ", n - 1])
+    return True
+
+
+def _evaluate_top(stack, optional_enabled):
+    primary = stack.pop()
+
+    if isinstance(primary, list):
+        stack.extend(reversed(primary))
+        return True
+    elif primary in EVALUATORS:
+        evaluator = EVALUATORS[primary]
+        return evaluator(stack)
+    elif optional_enabled and primary in OPTIONAL_EVALUATORS:
+        evaluator = OPTIONAL_EVALUATORS[primary]
+        return evaluator(stack)
+    elif optional_enabled and primary in CONSTANTS:
+        stack.append(CONSTANTS[primary])
+        return True
+    elif optional_enabled and (primary in "0123456789" or isinstance(primary, int)):
+        return _number_evaluator(int(primary), stack)
+    else:
+        stack.append(primary)
+        return False
+
+
+def evaluate_expr(expr, output=False, optional_enabled=True):
+    if not isinstance(expr, list):
+        expr = [expr]
 
     stack = expr[::-1]
 
-    while len(stack) > 1 or isinstance(stack[0], list):
+    # evaluate top of the stack until we cannot anymore or don't know what to do
+    while isinstance(stack, list):
         if output:
             print(expr_to_str(stack[::-1]))
-        
-        fn = stack.pop()
 
-        if isinstance(fn, list):
-            stack.extend(reversed(fn))
-        elif fn == "Y":
-            if len(stack) < 2:
-                raise ValueError(f"Insufficient arguments for Y")
-            c_1 = stack.pop()
-            stack.append(['Y', c_1])
-            stack.append(c_1)
-        elif fn == "S":
-            if len(stack) < 3:
-                raise ValueError(f"Insufficient arguments for S")
-            c_1 = stack.pop()
-            c_2 = stack.pop()
-            c_3 = stack.pop()
-            stack.append([c_2, c_3])
-            stack.append(c_3)
-            stack.append(c_1)
-        elif fn == "K":
-            if len(stack) < 2:
-                raise ValueError(f"Insufficient arguments for K")
-            c_1 = stack.pop()
-            stack.pop()  # c_2
-            stack.append(c_1)
-        elif fn == "I":
-            pass  # keep c_1 there
-        else:
-            raise ValueError(f"Unknown fn: {fn}")
+        if not _evaluate_top(stack, optional_enabled=True):
+            break
 
-    if output:
-        print(stack[0])
+    # if it's an expression of a single constant, remove parenthesis
+    if len(stack) == 1:
+        if output:
+            print(stack[0])
+        return stack[0]
 
-    return stack[0]
+    return stack[::-1]
 
 
 def _unexpected_error(w, i, expected="*"):
@@ -75,9 +147,7 @@ def _match(w, i, expected):
 
 
 def _parse_caf(w, i):
-    if i < len(w) and w[i] in "SKIY":
-        return _parse_constant(w, i)
-    elif i < len(w) and w[i] == "(":
+    if i < len(w) and w[i] == "(":
         i = _match(w, i, "(")
         fn, i = _parse_caf(w, i)
         value = [fn]
@@ -87,16 +157,19 @@ def _parse_caf(w, i):
             value.append(arg)
         i = _match(w, i, ")")
         return value, i
+    elif i < len(w):
+        return _parse_primary(w, i)
     else:
-        _unexpected_error(w, i, "(SKIY")
+        _unexpected_error(w, i)
 
 
-def _parse_constant(w, i):
-    return _parse_combinator(w, i)
+def _parse_primary(w, i):
+    o = ""
+    while i < len(w) and w[i] not in " )":
+        o += w[i]
+        i += 1
 
+    if not o:
+        raise ValueError(f"Unexpected empty object at position {i}.")
 
-def _parse_combinator(w, i):
-    if i < len(w) and w[i] in "SKIY":
-        return w[i], i + 1
-    else:
-        _unexpected_error(w, i, "SKIY")
+    return o, i
