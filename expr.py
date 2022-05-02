@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 def parse_expr(w):
     expr, i = _parse_caf(w, 0)
     if i < len(w):
@@ -70,7 +72,6 @@ SUCC = ["S", ["S", ["K", "S"], "K"]]
 ADD = ["S", ["K", "S"], ["S", ["K", ["S", ["K", "S"], "K"]]]]
 
 CONSTANTS = {
-    "zero": ZERO,
     "succ": SUCC,
     "add": ADD,
     "+": ADD,
@@ -79,7 +80,7 @@ CONSTANTS = {
 
 def _number_evaluator(n, stack):
     if n == 0:
-        stack.append("zero")
+        stack.append(ZERO)
     else:
         stack.append(["succ", n - 1])
     return True
@@ -100,35 +101,48 @@ def _evaluate_top(stack, optional_enabled):
     elif optional_enabled and primary in CONSTANTS:
         stack.append(CONSTANTS[primary])
         return True
-    elif optional_enabled and (primary in "0123456789" or isinstance(primary, int)):
+    elif optional_enabled and (isinstance(primary, int) or (isinstance(primary, str) and primary in "0123456789")):
         return _number_evaluator(int(primary), stack)
     else:
         stack.append(primary)
         return False
 
 
-def evaluate_expr(expr, output=False, optional_enabled=True):
+def _evaluate_expr(expr, output, optional_enabled, tabs=0):
+    # make single symbols into a list
     if not isinstance(expr, list):
         expr = [expr]
 
+    # invert expression to make it a python stack
     stack = expr[::-1]
-
+    
     # evaluate top of the stack until we cannot anymore or don't know what to do
     while isinstance(stack, list):
-        if output:
-            print(expr_to_str(stack[::-1]))
-
-        if not _evaluate_top(stack, optional_enabled=True):
+        if not _evaluate_top(stack, optional_enabled):
             break
-
-    # if it's an expression of a single constant, remove parenthesis
-    if len(stack) == 1:
+        
         if output:
-            print(stack[0])
-        return stack[0]
+            print(">>" * tabs, expr_to_str(stack[::-1]), sep="")
+
+    # evaluate recursively
+    if len(stack) == 1:
+        stack = stack[0]
+        # if output:
+        #     print(">>" * tabs, expr_to_str(stack[::-1]), sep="")
+        return stack
+    
+    for i in range(len(stack)-2, -1, -1):
+        stack[i] = _evaluate_expr(stack[i], output, optional_enabled, tabs + 1)
 
     return stack[::-1]
 
+
+def evaluate_expr(expr, output=False, optional_enabled=True):
+    result = _evaluate_expr(expr, output, optional_enabled)
+    if isinstance(result, list) and len(result) == 1:
+        result = result[0]
+    print(expr_to_str(result))
+    return result
 
 def _unexpected_error(w, i, expected="*"):
     if i < len(w):
