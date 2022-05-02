@@ -31,7 +31,7 @@ Evaluation:
 ### Y-combinator
 
 ```
-$ ./parse_expr  '(Y a b c)'
+$ ./parse_expr '(Y a b c)'
 Parsed expression:
 (Y a b c)
 
@@ -43,7 +43,7 @@ Evaluation:
 
 ~~ (a (Y a) b c)
 
-$ ./parse_expr  -s '(Y a b c)'
+$ ./parse_expr -n -s '(Y a b c)'
 (Y a b c)
 ```
 
