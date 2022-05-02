@@ -4,17 +4,43 @@ import sys
 
 from expr import evaluate_expr, parse_expr, expr_to_str
 
-if __name__ == "__main__":
-    USAGE_STRING = f"Usage: ./{sys.argv[0]} ski\n"
 
-    if len(sys.argv) != 2:
-        sys.stderr.write("ERROR: Wrong number of arguments.")
-        sys.stderr.write(USAGE_STRING)
+if __name__ == "__main__":    
+    usage_string = f"Usage: {sys.argv[0]} expr [--help|-h] [--silent|-s] [--noextensions|-n]\n"
+    expr_str = None
+    output = True
+    optional_enabled = True
+    for arg in sys.argv[1:]:
+        if arg.startswith('-'):
+            if arg == '-h' or arg == '--help':
+                sys.stderr.write(usage_string)
+                exit(0)
+            elif arg == '-s' or arg == '--silent':
+                output = False
+            elif arg == '-n' or arg == '--noextensions':
+                optional_enabled = False
+            else:
+                sys.stderr.write(f"ERROR: Unknown option {arg}.\n")
+                sys.stderr.write(usage_string)
+                exit(1)
+        elif expr_str:
+            sys.stderr.write("ERROR: Wrong number of arguments.\n")
+            sys.stderr.write(usage_string)
+            exit(1)
+        else:
+            expr_str = arg
+
+    if not expr_str:
+        sys.stderr.write("ERROR: No expression provided.\n")
+        sys.stderr.write(usage_string)
         exit(1)
 
-    expr = parse_expr(sys.argv[1])
-    print('Parsed expression:')
-    print(expr_to_str(expr))
-    print('')
-    print('Evaluation:')
-    evaluate_expr(expr, output=True)
+    expr = parse_expr(expr_str)
+    if output:
+        print('Parsed expression:')
+        print(expr_to_str(expr))
+        print('')
+        print('Evaluation:')
+    result = evaluate_expr(expr, output, optional_enabled)
+    if not output:
+        print(expr_to_str(result))
