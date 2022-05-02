@@ -13,7 +13,7 @@ Usage: ./parse_expr ski [--help|-h] [--silent|-s] [--noextensions|-n]
 
 ## Examples
 
-## Self-application
+### Self-application
 ```
 $./parse_expr '(S I I a)'
 Parsed expression:
@@ -28,14 +28,33 @@ Evaluation:
 ~~ (a a)
 ```
 
-## Number support and addition
+### Y-combinator
+
+```
+$ ./parse_expr  '(Y a b c)'
+Parsed expression:
+(Y a b c)
+
+Evaluation:
+.. (Y a b c)
+>> (a (Y a) b c)
+.. (a (Y a) b c)
+.. (a (Y a) b c)
+
+~~ (a (Y a) b c)
+
+$ ./parse_expr  -s '(Y a b c)'
+(Y a b c)
+```
+
+### Number support and addition
 
 ```
 ./parse_expr -s '((+ 1 2) a b)'
 (a (a (a b))) 
 ```
 
-## Booleans
+### Booleans
 ```
 $ ./parse_expr -s '(T a b)'
 a
