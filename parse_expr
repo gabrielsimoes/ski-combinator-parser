@@ -15,5 +15,6 @@ if __name__ == "__main__":
     expr = parse_expr(sys.argv[1])
     print('Parsed expression:')
     print(expr_to_str(expr))
+    print('')
     print('Evaluation:')
     evaluate_expr(expr, output=True)

@@ -1,4 +1,7 @@
-from copy import deepcopy
+import sys
+
+MAX_DEPTH = 10
+
 
 def parse_expr(w):
     expr, i = _parse_caf(w, 0)
@@ -75,15 +78,19 @@ CONSTANTS = {
     "succ": SUCC,
     "add": ADD,
     "+": ADD,
+    "T": ["K"],
+    "F": ["S", "K"],
+    "not": ["S", ["S", "I", ["K", "F"]], ["K", "T"]],
+    "or": ["S", "I", ["K", "T"]],
+    "and": ["S", "S", ["K", ["K", "F"]]],
 }
 
 
-def _number_evaluator(n, stack):
+def _number_evaluator(n):
     if n == 0:
-        stack.append(ZERO)
+        return ZERO
     else:
-        stack.append(["succ", n - 1])
-    return True
+        return ["succ", n - 1]
 
 
 def _evaluate_top(stack, optional_enabled):
@@ -101,48 +108,75 @@ def _evaluate_top(stack, optional_enabled):
     elif optional_enabled and primary in CONSTANTS:
         stack.append(CONSTANTS[primary])
         return True
-    elif optional_enabled and (isinstance(primary, int) or (isinstance(primary, str) and primary in "0123456789")):
-        return _number_evaluator(int(primary), stack)
+    elif optional_enabled and (
+        isinstance(primary, int)
+        or (isinstance(primary, str) and primary in "0123456789")
+    ):
+        stack.append(_number_evaluator(int(primary)))
+        return True
     else:
         stack.append(primary)
         return False
 
 
-def _evaluate_expr(expr, output, optional_enabled, tabs=0):
-    # make single symbols into a list
-    if not isinstance(expr, list):
-        expr = [expr]
+def _count_spaces(expr):
+    if isinstance(expr, list):
+        return 2 + sum(_count_spaces(e) for e in expr) + (len(expr) - 1)
+    else:
+        return len(expr)
 
-    # invert expression to make it a python stack
-    stack = expr[::-1]
-    
+
+def _evaluate_expr(
+    expr, output, optional_enabled, spaces=0, depth=0, max_depth=MAX_DEPTH
+):
+    if depth > MAX_DEPTH:
+        print("Max depth reached", file=sys.stderr)
+        return expr
+
+    if not isinstance(expr, list):
+        # make single symbols into a stack
+        stack = [expr]
+    else:
+        # invert expression to make it a python stack
+        stack = expr[::-1]
+
     # evaluate top of the stack until we cannot anymore or don't know what to do
     while isinstance(stack, list):
         if not _evaluate_top(stack, optional_enabled):
             break
-        
         if output:
-            print(">>" * tabs, expr_to_str(stack[::-1]), sep="")
+            print(">> ", spaces * " ", expr_to_str(stack[::-1]), sep="")
 
     # evaluate recursively
     if len(stack) == 1:
         stack = stack[0]
-        # if output:
-        #     print(">>" * tabs, expr_to_str(stack[::-1]), sep="")
         return stack
-    
-    for i in range(len(stack)-2, -1, -1):
-        stack[i] = _evaluate_expr(stack[i], output, optional_enabled, tabs + 1)
+
+    for i in range(len(stack) - 2, -1, -1):
+        if output and i != len(stack) - 2:
+            print(".. ", spaces * " ", expr_to_str(stack[::-1]), sep="")
+        stack[i] = _evaluate_expr(
+            stack[i],
+            output,
+            optional_enabled,
+            spaces + _count_spaces(stack[i + 1 :]),
+            depth + 1,
+        )
 
     return stack[::-1]
 
 
 def evaluate_expr(expr, output=False, optional_enabled=True):
+    if output:
+        print(".. ", expr_to_str(expr), sep="")
     result = _evaluate_expr(expr, output, optional_enabled)
     if isinstance(result, list) and len(result) == 1:
         result = result[0]
-    print(expr_to_str(result))
+    if output:
+        print("")
+        print("~~", expr_to_str(result))
     return result
+
 
 def _unexpected_error(w, i, expected="*"):
     if i < len(w):
